@@ -233,8 +233,7 @@ def save_outputs(output_filepath, top_ids_and_scores, questions, question_langua
         for retriever_output, question, lang, question_id in zip(top_ids_and_scores, questions, question_languages, q_ids): 
             temp_doc = {
                 "question_id": question_id, 
-                "question": question, 
-                "retrieved_passage_id": retriever_output[0], 
+                "topk_passage_id": retriever_output[0], 
                 "lang": lang
             }
 
