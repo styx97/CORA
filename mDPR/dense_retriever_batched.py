@@ -35,7 +35,7 @@ from dpr.utils.model_utils import setup_for_distributed_mode, get_model_obj, loa
 from dpr.indexer.faiss_indexers import DenseIndexer, DenseHNSWFlatIndexer, DenseFlatIndexer
 from utils.example_utils import MKQADataset, MintakaDataset
 
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm, trange
 
 
 logger = logging.getLogger()
@@ -73,7 +73,7 @@ class DenseRetriever(object):
         self.question_encoder.eval()
 
         with torch.no_grad():
-            for j, batch_start in enumerate(range(0, n, bsz)):
+            for j, batch_start in enumerate(trange(0, n, bsz, leave=False)):
 
                 batch_token_tensors = [self.tensorizer.text_to_tensor(q) for q in
                                        questions[batch_start:batch_start + bsz]]
@@ -238,22 +238,24 @@ def save_results(passages: Dict[object, Tuple[str, str]], questions: List[str], 
 
 def save_outputs(output_filepath, top_ids_and_scores, question_languages, q_ids):
     
-    os.makedirs(os.path.dirname(output_filepath), exists_ok=True)
+    os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
     with open(output_filepath, 'a') as f:
-        for retriever_output, question, lang, question_id in zip(top_ids_and_scores, questions, question_languages, q_ids): 
+        for retriever_output, lang, question_id in zip(top_ids_and_scores, question_languages, q_ids): 
             temp_doc = {
                 "question_id": question_id, 
-                
+                "lang": lang,
                 "topk": [{
                     "pid": pid,
-                    "score":score
+                    "score": float(score)
                 } for pid, score in zip(*retriever_output)], 
-                
-                "lang": lang
             }
-
-            s = json.dumps(temp_doc, ensure_ascii=False)
+            try:
+                s = json.dumps(temp_doc, ensure_ascii=False)
+            except ex:
+                print(ex)
+                print('doc:', temp_doc)
+                raise ex
 
             f.write(f"{s}\n")
 
@@ -287,6 +289,7 @@ def main(args):
     encoder, _ = setup_for_distributed_mode(encoder, None, args.device, args.n_gpu,
                                             args.local_rank,
                                             args.fp16)
+    encoder = encoder.cuda()
     encoder.eval()
     
 
