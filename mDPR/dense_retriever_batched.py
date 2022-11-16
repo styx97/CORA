@@ -33,7 +33,7 @@ from dpr.options import add_encoder_params, setup_args_gpu, print_args, set_enco
 from dpr.utils.data_utils import Tensorizer
 from dpr.utils.model_utils import setup_for_distributed_mode, get_model_obj, load_states_from_checkpoint
 from dpr.indexer.faiss_indexers import DenseIndexer, DenseHNSWFlatIndexer, DenseFlatIndexer
-from dataset_utils import MKQADataset, MintakaDataset
+from utils.example_utils import MKQADataset, MintakaDataset
 
 from tqdm.auto import tqdm
 
@@ -44,6 +44,14 @@ if (logger.hasHandlers()):
     logger.handlers.clear()
 console = logging.StreamHandler()
 logger.addHandler(console)
+
+
+encoded_ctx_path_dict = {
+    'en': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_en_*',
+    'others': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_others_*', 
+    'all': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_*'
+}
+
 
 
 class DenseRetriever(object):
@@ -227,17 +235,24 @@ def save_results(passages: Dict[object, Tuple[str, str]], questions: List[str], 
     logger.info('Saved results * scores  to %s', out_file)
 
 
-def save_outputs(output_filepath, top_ids_and_scores, questions, question_languages, q_ids):
+def save_outputs(output_filepath, top_ids_and_scores, question_languages, q_ids):
     
+    os.makedirs(os.path.dirname(output_filepath), exists_ok=True)
+
     with open(output_filepath, 'a') as f:
         for retriever_output, question, lang, question_id in zip(top_ids_and_scores, questions, question_languages, q_ids): 
             temp_doc = {
                 "question_id": question_id, 
-                "topk_passage_id": retriever_output[0], 
+                
+                "topk": [{
+                    "pid": pid,
+                    "score":score
+                } for pid, score in zip(*retriever_output)], 
+                
                 "lang": lang
             }
 
-            s= json.dumps(temp_doc, ensure_ascii=False)
+            s = json.dumps(temp_doc, ensure_ascii=False)
 
             f.write(f"{s}\n")
 
@@ -297,8 +312,8 @@ def main(args):
 
 
     # index all passages
-    ctx_files_pattern = args.encoded_ctx_file
-    input_paths = glob.glob(ctx_files_pattern)
+    ctx_files_pattern = encoded_ctx_path_dict[args.index_lang]
+    input_paths = sorted(glob.glob(ctx_files_pattern)) 
     if args.remove_lang is not None:
         final_fps = []
 
@@ -313,6 +328,7 @@ def main(args):
         input_paths = final_fps
         print("lang {} are removed from retrieval target".format(input_paths))
         index_path = "_".join(input_paths[0].split("_")[:-1])
+
     if args.save_or_load_index and os.path.exists(index_path):
         retriever.index.deserialize(index_path)
     else:
@@ -325,22 +341,6 @@ def main(args):
     dataset = load_dataset(args.dataset, args.qa_file)
     dataset_len = len(dataset.data)
 
-
-
-    # get questions & answers
-    # questions = []
-    # question_languages = []
-    # q_ids = []
-
-    # # read expanded mkqa questions and retrieve passages 
-    # with open(args.qa_file) as f: 
-    #     for line in f.readlines(): 
-    #         temp_doc = json.loads(line.rstrip("\n"))
-    #         questions.append(temp_doc['question'])
-    #         question_languages.append(temp_doc['lang'])
-    #         q_ids.append(temp_doc['question_id'])
-
-   
    
     for i in tqdm(range(0, dataset_len, args.retrieval_batch_size), desc='CORA Retrieval', unit='batch'):
 
@@ -357,7 +357,7 @@ def main(args):
         # get top k results
         top_ids_and_scores = retriever.get_top_docs(questions_tensor.numpy(), args.n_docs)
         
-        save_outputs(args.out_file, top_ids_and_scores, input_questions, src_langs, q_ids)
+        save_outputs(args.out_file, top_ids_and_scores, src_langs, q_ids)
         
 
 
@@ -373,13 +373,13 @@ if __name__ == '__main__':
     parser.add_argument('--source_lang', required=True, type=str, default="en", help="select language from source dataset")
     parser.add_argument('--dataset', required=True, type=str, default=None)
     parser.add_argument('--dataset_fold', required=False, type=str, default=None)
-    
     parser.add_argument('--qa_file', required=True, type=str, default=None,
                         help="Question and answers file of the format: question \\t ['answer1','answer2', ...]")
     parser.add_argument('--ctx_file', required=True, type=str, default=None,
                         help="All passages file in the tsv format: id \\t passage_text \\t title")
-    parser.add_argument('--encoded_ctx_file', type=str, default=None,
-                        help='Glob path to encoded passages (from generate_dense_embeddings tool)')
+    parser.add_argument('--index_lang', options=['en', 'others', 'all'], default='all')
+    # parser.add_argument('--encoded_ctx_file', type=str, default=None,
+    #                     help='Glob path to encoded passages (from generate_dense_embeddings tool)')
     parser.add_argument('--remove_lang', type=str, default=None, nargs="*",
                         help='languages to be removed')
     parser.add_argument('--add_lang', action='store_true')
