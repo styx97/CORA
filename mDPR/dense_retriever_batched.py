@@ -49,7 +49,8 @@ logger.addHandler(console)
 encoded_ctx_path_dict = {
     'en': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_en_*',
     'others': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_others_*', 
-    'all': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_*'
+    'all': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_*', 
+    'test': '/fs/clip-scratch/rupak/CORA_orig/models/embeddings/wikipedia_split/wiki_emb_others_0'
 }
 
 
