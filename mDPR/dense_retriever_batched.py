@@ -20,6 +20,7 @@ import pickle
 import time
 import jsonlines
 from typing import List, Tuple, Dict, Iterator, Optional
+from tqdm.auto import tqdm
 
 import numpy as np
 import torch
@@ -179,7 +180,7 @@ def load_passages(ctx_file: str) -> Dict[object, Tuple[str, str]]:
         with open(ctx_file) as tsvfile:
             reader = csv.reader(tsvfile, delimiter='\t', )
             # file format: doc_id, doc_text, title
-            for row in reader:
+            for row in tqdm(reader):
                 if row[0] != 'id':
                     docs[row[0]] = (row[1], row[2])
     return docs
