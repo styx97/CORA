@@ -11,17 +11,14 @@ from tqdm import tqdm
 from transformers import BartForConditionalGeneration, MT5ForConditionalGeneration, AutoTokenizer
 from transformers import logging as transformers_logging
 
-
 sys.path.append(os.path.join(os.getcwd()))  # noqa: E402 # isort:skip
 from utils import exact_match_score, f1_score  # noqa: E402 # isort:skip
 from utils import metric_max_over_ground_truths, get_scores, get_precision_at_k  # noqa: E402 # isort:skip
-
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 transformers_logging.set_verbosity_info()
-
 
 def evaluate_batch_e2e(args, model, tokenizer, questions):
     with torch.no_grad():

@@ -24,7 +24,7 @@ transformers_logging.set_verbosity_info()
 
 
 def evaluate_batch_e2e(args, model, tokenizer, questions):
-    print(repr(args))
+    #print(repr(args))
 
     with torch.no_grad():
         inputs_dict = tokenizer.batch_encode_plus(
