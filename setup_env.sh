@@ -8,7 +8,7 @@ if ! command -v conda &>/dev/null; then
 fi
 
 if ! { conda env list | grep "${env_name}"; } >/dev/null 2>&1; then
-    conda create -y -n "${env_name}" python=3.7
+    conda create -y -n "${env_name}" python=3.8
 fi
 
 eval "$(conda shell.bash hook)"
