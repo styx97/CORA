@@ -35,3 +35,6 @@ pip install submitit
 pip install --no-cache numpy pandas scipy einops scikit-learn matplotlib jupyterlab wandb
 
 pip install --no-cache rich loguru jsonlines
+
+#install lmdbm 
+pip install --no-cache lmdbm==0.0.5
